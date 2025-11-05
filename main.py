@@ -1,39 +1,37 @@
-from fastapi import FastAPI
-from pydantic import BaseModel
-import requests
+from fastapi import FastAPI, Form
 from fastapi.responses import JSONResponse
+import requests
 
 app = FastAPI(
     title="Code Helper API",
     description="🚀 AI-powered code review and analysis API",
-    version="2.0"
+    version="3.0"
 )
-
-class CodeRequest(BaseModel):
-    code: str
-    language: str = "python"
 
 @app.get("/")
 async def root():
-    return {"message": "🚀 Code Helper API работает!", "version": "2.0"}
+    return {"message": "🚀 Code Helper API работает!", "version": "3.0"}
 
 @app.post("/code-review")
-async def code_review(request: CodeRequest):
-    if not request.code.strip():
+async def code_review(
+    code: str = Form(...),
+    language: str = Form("python")
+):
+    if not code.strip():
         return JSONResponse({"error": "Код не предоставлен"}, status_code=400)
     
     # Простые автономные ответы
     simple_responses = {
-        "python": "🔍 Проблемы: Переменная 'hello' не определена. Используйте print('hello') с кавычками.\n💡 Рекомендации: Добавьте кавычки и обработку ошибок.",
-        "javascript": "🔍 Проблемы: Используется print() вместо console.log().\n💡 Рекомендации: Замените на console.log('hello') с кавычками.",
-        "java": "🔍 Проблемы: Неправильный синтаксис Java.\n💡 Рекомендации: Используйте System.out.println() внутри класса.",
-        "php": "🔍 Проблемы: Неправильный синтаксис PHP.\n💡 Рекомендации: Используйте echo 'hello'; внутри <?php ?> тегов."
+        "python": "🔍 Проблемы: Переменная 'hello' не определена. Используйте print('hello') с кавычками.",
+        "javascript": "🔍 Проблемы: Используется print() вместо console.log(). Замените на console.log('hello').",
+        "java": "🔍 Проблемы: Неправильный синтаксис Java. Используйте System.out.println() внутри класса.",
+        "php": "🔍 Проблемы: Неправильный синтаксис PHP. Используйте echo 'hello'; внутри <?php ?> тегов."
     }
     
     # Пробуем AI
     ai_response = None
     try:
-        prompt = f"Проанализируй код на {request.language}: {request.code}"
+        prompt = f"Проанализируй код на {language}: {code}"
         response = requests.post(
             "https://my-ai-api-ihp6.onrender.com/smart-chat",
             json={"message": prompt},
@@ -46,19 +44,19 @@ async def code_review(request: CodeRequest):
     
     # Выбираем ответ
     final_review = ai_response if ai_response and len(ai_response) > 50 else simple_responses.get(
-        request.language, 
+        language, 
         "🔍 Проверьте синтаксис и добавьте комментарии."
     )
     
     return {
         "status": "success",
-        "language": request.language,
+        "language": language,
         "review": final_review
     }
 
 @app.get("/health")
 async def health():
-    return {"status": "healthy", "service": "code-helper-api"}
+    return {"status": "healthy", "service": "code-helper-api", "version": "3.0"}
 
 if __name__ == "__main__":
     import uvicorn
