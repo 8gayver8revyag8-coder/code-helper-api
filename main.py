@@ -1,145 +1,90 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 import requests
-import os
-from typing import Optional
 
-app = FastAPI(
-    title="Code Helper API",
-    description="🚀 AI-powered code review and analysis API", 
-    version="1.0"
-)
-
-class CodeRequest(BaseModel):
-    code: str
-    language: str = "python"
-    task: Optional[str] = None
-
-class ExplanationRequest(BaseModel):
-    code: str
-    language: str = "python"
-
-class BugFixRequest(BaseModel):
-    code: str
-    language: str = "python"
-    error_description: Optional[str] = None
+app = FastAPI(title="Code Helper API", version="1.0")
 
 @app.get("/")
 async def root():
-    return {
-        "message": "🚀 Code Helper API работает!",
-        "endpoints": {
-            "/code-review": "Анализ и улучшение кода",
-            "/code-explainer": "Объяснение кода",
-            "/bug-fixer": "Поиск и исправление ошибок", 
-            "/docs": "Документация API"
-        },
-        "version": "1.0"
-    }
+    return {"message": "🚀 Code Helper API работает!", "status": "success"}
 
 @app.post("/code-review")
-async def code_review(request: CodeRequest):
-    prompt = f"""
-    Проанализируй этот код на {request.language} и дай фидбек:
+async def code_review(code: str = "", language: str = "python"):
+    """Анализ кода"""
+    if not code:
+        return JSONResponse({"error": "Код не предоставлен"}, status_code=400)
     
-    {request.code}
-    
-    Формат:
-    Проблемы: [список]
-    Рекомендации: [список]  
-    Сильные стороны: [список]
-    """
+    prompt = f"Проанализируй этот код на {language}:\n\n{code}\n\nДай рекомендации по улучшению."
     
     try:
         response = requests.post(
             "https://my-ai-api-ihp6.onrender.com/smart-chat",
             json={"message": prompt},
-            timeout=30
+            timeout=10
         )
         
         if response.status_code == 200:
+            ai_response = response.json().get("response", "Анализ завершен")
             return {
                 "status": "success",
-                "service": "code-review", 
-                "review": response.json().get("response", "Анализ завершен")
+                "review": ai_response,
+                "language": language
             }
         else:
             return {
-                "status": "success",
-                "review": "✅ Код выглядит чистым. Проверьте отступы и именование переменных."
+                "status": "success", 
+                "review": "✅ Проверьте отступы, именование переменных и обработку ошибок.",
+                "note": "AI сервис временно недоступен"
             }
-    except:
+    except Exception as e:
         return {
-            "status": "success", 
-            "review": "🔧 Проверьте синтаксис и логику кода. Убедитесь в правильности отступов."
+            "status": "success",
+            "review": "🔧 Код требует ручной проверки. Убедитесь в правильности синтаксиса.",
+            "error": str(e)
         }
 
 @app.post("/code-explainer")
-async def explain_code(request: ExplanationRequest):
-    prompt = f"""
-    Объясни этот код на {request.language}:
+async def explain_code(code: str = "", language: str = "python"):
+    """Объяснение кода"""
+    if not code:
+        return JSONResponse({"error": "Код не предоставлен"}, status_code=400)
     
-    {request.code}
-    """
+    prompt = f"Объясни этот код на {language} простыми словами:\n\n{code}"
     
     try:
         response = requests.post(
             "https://my-ai-api-ihp6.onrender.com/smart-chat",
             json={"message": prompt},
-            timeout=30
+            timeout=10
         )
         
         if response.status_code == 200:
+            ai_response = response.json().get("response", "Объяснение завершено")
             return {
                 "status": "success",
-                "explanation": response.json().get("response", "Код выполняет указанные операции")
+                "explanation": ai_response,
+                "language": language
             }
         else:
             return {
                 "status": "success",
-                "explanation": "🔧 Этот код выполняет различные операции. Добавьте комментарии для ясности."
+                "explanation": "📝 Этот код выполняет различные операции. Добавьте комментарии для лучшего понимания."
             }
-    except:
+    except Exception as e:
         return {
             "status": "success",
-            "explanation": "📝 Код требует дополнительного анализа. Проверьте документацию языка."
-        }
-
-@app.post("/bug-fixer")
-async def bug_fixer(request: BugFixRequest):
-    prompt = f"""
-    Найди ошибки в этом коде на {request.language}:
-    
-    {request.code}
-    {request.error_description or ''}
-    """
-    
-    try:
-        response = requests.post(
-            "https://my-ai-api-ihp6.onrender.com/smart-chat", 
-            json={"message": prompt},
-            timeout=30
-        )
-        
-        if response.status_code == 200:
-            return {
-                "status": "success", 
-                "analysis": response.json().get("response", "Анализ завершен")
-            }
-        else:
-            return {
-                "status": "success",
-                "analysis": "✅ Критических ошибок не найдено. Проверьте синтаксис."
-            }
-    except:
-        return {
-            "status": "success", 
-            "analysis": "🐛 Проверьте синтаксис и логику. Убедитесь в правильности всех скобок и кавычек."
+            "explanation": "🔍 Код требует дополнительного анализа. Проверьте документацию языка.",
+            "error": str(e)
         }
 
 @app.get("/health")
 async def health():
-    return {"status": "healthy", "service": "code-helper-api"}
+    return {"status": "healthy", "service": "code-helper-api", "version": "1.0"}
+
+@app.get("/test")
+async def test():
+    """Тестовый эндпоинт"""
+    return {"message": "API работает!", "test": "success"}
 
 if __name__ == "__main__":
     import uvicorn
