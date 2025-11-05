@@ -2,8 +2,15 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import requests
 import os
+from typing import Optional
 
-app = FastAPI(title="Code Helper API", version="1.0")
+app = FastAPI(
+    title="Code Helper API",
+    description="🚀 AI-powered code review and analysis API",
+    version="1.0"
+)
+
+# Остальной код остается без изменений...
 
 class CodeRequest(BaseModel):
     code: str
